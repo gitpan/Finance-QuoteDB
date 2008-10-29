@@ -1,0 +1,27 @@
+---
+abstract: 'User database tools based on Finance::Quote'
+author:
+  - 'Erik Colson <eco@ecocode.net>'
+build_requires:
+  Test::More: 0
+distribution_type: module
+generated_by: 'Module::Install version 0.77'
+license: gpl
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: 1.4
+name: Finance-QuoteDB
+no_index:
+  directory:
+    - examples
+    - inc
+    - t
+requires:
+  Config::IniFiles: 0
+  DBIx::Class: 0
+  DBIx::Class::Schema: 0
+  Finance::Quote: 0
+  Log::Log4perl: 0
+  Pod::Usage: 0
+  SQL::Translator: 0
+version: 0.00_50
