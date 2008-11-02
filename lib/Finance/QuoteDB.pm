@@ -6,6 +6,8 @@ use strict;
 use Exporter ();
 use vars qw/@EXPORT @EXPORT_OK @EXPORT_TAGS $VERSION/;
 use Finance::Quote;
+use Finance::QuoteHist;
+
 use Log::Log4perl qw(:easy);
 
 =head1 NAME
@@ -14,14 +16,14 @@ Finance::QuoteDB - User database tools based on Finance::Quote
 
 =head1 VERSION
 
-Version 0.00_51 pre-alpha
+Version 0.01 alpha
 
 =cut
 
 @EXPORT = ();
 @EXPORT_OK = qw /createdb updatedb addstock/ ;
 @EXPORT_TAGS = ( all => [@EXPORT_OK] );
-$VERSION = '0.00_51';
+$VERSION = '0.01';
 
 =head1 SYNOPSIS
 
@@ -123,7 +125,7 @@ sub updatedbMarketStock {
       INFO ("Updating stock $stock --> $quotes{$stock,'last'}\n");
       my $quoters = $schema->resultset('Quote')->update_or_create(
         { symbolID => $stock,
-          date => $quotes{$stock,'date'},
+          date => $quotes{$stock,'isodate'},
           previous_close => $quotes{$stock,'close'},
           day_open => $quotes{$stock,'open'},
           day_high => $quotes{$stock,'high'},
@@ -138,6 +140,53 @@ sub updatedbMarketStock {
     }
   }
 };
+
+=head2 backpopulate
+
+backpopulate($start_date, $end_date, $overwrite, $stocks)
+
+=cut
+
+sub backpopulate {
+  my ($self, $start_date, $end_date, $overwrite, $stocks) = @_;
+  $end_date = $self->today() if (!$end_date);
+  if (my @stocks = split(",",$stocks)) {
+    INFO ("Retrieving data...\n");
+    my $schema = $self->schema();
+    my $q = Finance::QuoteHist->new( symbols => \@stocks,
+                                     start_date => $start_date,
+                                     end_date => $end_date );
+    my $line ;
+    my %symbols ;
+    foreach my $row ($q->quotes()) {
+      my ($symbol, $date, $open, $high, $low, $close, $volume) = @$row;
+      $date =~ tr|/|-|;
+      my $tline = substr($date,0,7) ;
+      if ($line ne $tline) {
+        INFO ("$tline") ;
+        %symbols = () ;
+      };
+      $line = $tline ;
+      if (!$symbols{$symbol}) {
+        $symbols{$symbol}=1;
+        INFO (" -> $symbol") ;
+      }
+      my %data = ( symbolID => $symbol,
+                   date => $date,
+                   day_open => $open,
+                   day_high => $high,
+                   day_low => $low,
+                   day_close => $close,
+                   volume => $volume
+                 ) ;
+      if ($overwrite) {
+        my $quoters = $schema->resultset('Quote')->update_or_create( \%data ) ;
+      } else {
+        my $quoters = $schema->resultset('Quote')->find_or_create( \%data ) ;
+      }
+    }
+  }
+}
 
 =head2 delstock
 
@@ -219,6 +268,19 @@ sub schema {
     }
   }
   return $self->{schema}
+}
+
+=head2 today
+
+today()
+
+returns current date in isodate format
+
+=cut
+
+sub today {
+  my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime();
+  return ($year+1900)."-".sprintf('%02d',$mon+1)."-".sprintf('%02d',$mday) ;
 }
 
 =head1 AUTHOR

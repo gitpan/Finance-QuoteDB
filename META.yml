@@ -21,7 +21,8 @@ requires:
   DBIx::Class: 0
   DBIx::Class::Schema: 0
   Finance::Quote: 0
+  Finance::QuoteHist: 0
   Log::Log4perl: 0
   Pod::Usage: 0
   SQL::Translator: 0
-version: 0.00_51
+version: 0.01
