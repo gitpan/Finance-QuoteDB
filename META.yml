@@ -24,4 +24,4 @@ requires:
   Log::Log4perl: 0
   Pod::Usage: 0
   SQL::Translator: 0
-version: 0.02
+version: 0.03

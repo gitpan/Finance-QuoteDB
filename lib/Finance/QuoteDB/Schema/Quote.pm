@@ -6,12 +6,12 @@ use warnings;
 
 use vars qw /$VERSION/;
 
-$VERSION = '0.01';
+$VERSION = '0.03';
 
 __PACKAGE__->load_components(qw/ PK::Auto Core /);
 __PACKAGE__->table('quote');
 __PACKAGE__->add_columns ( symbolID=> { data_type=>'varchar',
-                                        size=>12,
+                                        size=>20,
                                         is_nullable=>0,
                                         is_auto_increment=>0,
                                         default_value=>''

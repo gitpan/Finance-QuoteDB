@@ -13,6 +13,7 @@ inc/Module/Install/Win32.pm
 inc/Module/Install/WriteAll.pm
 lib/Finance/QuoteDB.pm
 lib/Finance/QuoteDB/Schema.pm
+lib/Finance/QuoteDB/Schema/FQMarket.pm
 lib/Finance/QuoteDB/Schema/Quote.pm
 lib/Finance/QuoteDB/Schema/Symbol.pm
 LICENSE
