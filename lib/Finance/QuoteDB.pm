@@ -16,14 +16,14 @@ Finance::QuoteDB - User database tools based on Finance::Quote
 
 =head1 VERSION
 
-Version 0.01 alpha
+Version 0.02
 
 =cut
 
 @EXPORT = ();
 @EXPORT_OK = qw /createdb updatedb addstock/ ;
 @EXPORT_TAGS = ( all => [@EXPORT_OK] );
-$VERSION = '0.01';
+$VERSION = '0.02';
 
 =head1 SYNOPSIS
 
@@ -70,9 +70,11 @@ sub createdb {
   my $self = shift;
 
   my $dsn = $self->{dsn};
+  my $dsnuser = $self->{dsnuser};
+  my $dsnpasswd = $self->{dsnpasswd};
 
-  INFO ("COMMAND: Create database $dsn\n");
-  my $schema = Finance::QuoteDB::Schema->connect_and_deploy($dsn); # creates the database
+  INFO ("COMMAND: Create database $dsn with user $dsnuser\n");
+  my $schema = Finance::QuoteDB::Schema->connect_and_deploy($dsn,$dsnuser,$dsnpasswd); # creates the database
   return $schema;
 }
 
@@ -86,8 +88,8 @@ sub updatedb {
   my $self = shift ;
 
   my $dsn = $self->{dsn};
-
   INFO ("COMMAND: Update database $dsn\n");
+
   my $schema = $self->schema();
   my @stocks = $schema -> resultset('Symbol')->
     search(undef, { order_by => "fqmarket,symbolID",
@@ -219,8 +221,6 @@ addstock($market,$stocks)
 sub addstock {
   my ($self,$market,$stocks) = @_ ;
 
-  my $dsn = $self->{dsn};
-
   if (!$market) {
     INFO ("No market specified\n") ;
     return
@@ -258,8 +258,10 @@ If necessary, creates a DBIx::Class::Schema and returns a reference to that DBIx
 sub schema {
   my $self = shift ;
   my $dsn = $self->{dsn};
+  my $dsnuser = $self->{dsnuser};
+  my $dsnpasswd = $self->{dsnpasswd};
   if (!$self->{schema}) {
-    if (my $schema = Finance::QuoteDB::Schema->connect($dsn)) {
+    if (my $schema = Finance::QuoteDB::Schema->connect($dsn,$dsnuser,$dsnpasswd)) {
       INFO ("Connected to database $dsn\n");
       $self->{schema} = $schema ;
     } else {
