@@ -12,13 +12,14 @@ inc/Module/Install/Scripts.pm
 inc/Module/Install/Win32.pm
 inc/Module/Install/WriteAll.pm
 lib/Finance/QuoteDB.pm
+lib/Finance/QuoteDB/Geniustrader.pm
 lib/Finance/QuoteDB/Schema.pm
 lib/Finance/QuoteDB/Schema/FQMarket.pm
 lib/Finance/QuoteDB/Schema/Quote.pm
 lib/Finance/QuoteDB/Schema/Symbol.pm
 LICENSE
 Makefile.PL
-MANIFEST			This list of files
+MANIFEST
 MANIFEST.SKIP
 META.yml
 README

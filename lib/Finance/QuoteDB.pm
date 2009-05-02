@@ -8,6 +8,8 @@ use vars qw/@EXPORT @EXPORT_OK @EXPORT_TAGS $VERSION/;
 use Finance::Quote;
 use Finance::QuoteHist;
 
+require Finance::QuoteDB::Geniustrader;
+
 use Log::Log4perl qw(:easy);
 
 =head1 NAME
@@ -19,7 +21,7 @@ Finance::QuoteDB - User database tools based on Finance::Quote
 @EXPORT = ();
 @EXPORT_OK = qw /createdb updatedb addstock/ ;
 @EXPORT_TAGS = ( all => [@EXPORT_OK] );
-$VERSION = '0.09';
+$VERSION = '0.10';
 
 =head1 SYNOPSIS
 
@@ -317,6 +319,33 @@ sub dumpquotes {
       }
     }
   }
+}
+
+=head2 dumpstocks
+
+dumpstocks ()
+
+This function dumps the symbols of the stocks in the database.
+
+=cut
+
+sub dumpstocks {
+  my $self = shift ;
+
+  my $dsn = $self->{dsn};
+  INFO ("COMMAND: Dump stocks in database $dsn\n");
+
+  my $schema = $self->schema();
+  my @stocks = $schema -> resultset('Symbol')->
+    search(undef, { order_by => "symbolID,fqmarket,fqsymbol",
+                    columns => [qw / symbolID fqmarket fqsymbol /] });
+  print "     USERSYMBOL       FQMARKET         FQSYMBOL\n";
+  foreach my $stock (@stocks) {
+    my $fqmarket = $stock->fqmarket()->name() ;
+    my $symbolID = $stock->symbolID() ;
+    my $fqsymbol = $stock->fqsymbol() ;
+    printf "%15s %15s %15s\n",$symbolID,$fqmarket,$fqsymbol;
+  };
 }
 
 =head2 schema
