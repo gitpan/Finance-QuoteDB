@@ -1,8 +1,0 @@
-.*\.tar\.gz
-\.git
-.*\.bak
-blib
-.*.bak$
-~.*
-.*\.db
-^Makefile$

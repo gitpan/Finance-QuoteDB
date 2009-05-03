@@ -19,8 +19,7 @@ lib/Finance/QuoteDB/Schema/Quote.pm
 lib/Finance/QuoteDB/Schema/Symbol.pm
 LICENSE
 Makefile.PL
-MANIFEST
-MANIFEST.SKIP
+MANIFEST			This list of files
 META.yml
 README
 script/fqdb
