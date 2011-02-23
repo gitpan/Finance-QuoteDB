@@ -31,7 +31,7 @@ Finance::QuoteDB - User database tools based on Finance::Quote
 @EXPORT = ();
 @EXPORT_OK = qw /createdb updatedb addstock/ ;
 @EXPORT_TAGS = ( all => [@EXPORT_OK] );
-$VERSION = '0.14';
+$VERSION = '0.15';
 
 =head1 SYNOPSIS
 
@@ -413,9 +413,10 @@ sub add_yahoo_stocks {
         my $req = HTTP::Request->new(GET => $url);
         my $reply = $ua->request($req);
         if ($reply->is_success) {
+          my ($from,$to,$total)=(0,0,0) ;
           if ($reply->content=~ m|Showing\s+(\d)+ - (\d+) of\s+(\d+)|) { # check if this is last page for this market
-            my ($from,$to,$total)=($1,$2,$3);
-            INFO ("For A: ".int($to*100/$total)." % completed");
+            ($from,$to,$total)=($1,$2,$3);
+            INFO ("For $letter: ".int($to*100/$total)." % completed");
             $b=$to; # next page should start at this symbol. actually starts at symbol+1
             $cont = ($to < $total);
           }
@@ -423,7 +424,9 @@ sub add_yahoo_stocks {
           my $te = HTML::TableExtract->new( headers=>[qw /Symbol Exchange/ ] );
           $te->parse($reply->content);
           foreach my $ts ($te->tables) {
+            my $countrows = 0;
             foreach my $tr ($ts->rows) {
+              $countrows++;
               my $trsymb = @$tr[0] ;
               $trsymb =~ s/ //g ;
               my $exchsym = @$tr[1] ;
@@ -432,6 +435,11 @@ sub add_yahoo_stocks {
                 INFO (" Symbol: $trsymb - Exchange $exchsym");
                 $symbols{$trsymb}+=1 ;                           # add the symbol as a key in the hash removes duplicates automatically
               }
+            }
+            DEBUG ("--> $countrows rows");
+            if ($countrows && ($total==0)) {                  # there are rows on this page and we are on the last page (no total)
+              INFO ("For $letter: 100 % completed");
+              $cont=0 ;
             }
           }
         }

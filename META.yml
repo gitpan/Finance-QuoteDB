@@ -28,8 +28,8 @@ requires:
   Finance::QuoteHist: 0
   Log::Log4perl: 0
   Pod::Usage: 0
-  Regexp::Common.pm: 0
+  Regexp::Common: 0
   SQL::Translator: 0
 resources:
   license: http://opensource.org/licenses/gpl-license.php
-version: 0.14
+version: 0.15
