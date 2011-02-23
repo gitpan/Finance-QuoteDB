@@ -6,7 +6,17 @@ use strict;
 use Exporter ();
 use vars qw/@EXPORT @EXPORT_OK @EXPORT_TAGS $VERSION/;
 use Finance::Quote;
+
+# Bug correction in Finance::QuoteHist
+# reported on RT #64365
+# This block can safely be removed once Finance::QuoteHist is corrected
+BEGIN {
+$Date::Manip::Backend = 'DM5';
+}
+
 use Finance::QuoteHist;
+use LWP::UserAgent;
+use HTML::TableExtract;
 
 require Finance::QuoteDB::Geniustrader;
 
@@ -21,7 +31,7 @@ Finance::QuoteDB - User database tools based on Finance::Quote
 @EXPORT = ();
 @EXPORT_OK = qw /createdb updatedb addstock/ ;
 @EXPORT_TAGS = ( all => [@EXPORT_OK] );
-$VERSION = '0.13';
+$VERSION = '0.14';
 
 =head1 SYNOPSIS
 
@@ -48,6 +58,12 @@ sub new {
   foreach (keys %$config) {
     $this->{$_} = $$config{$_};
   }
+  $this->{logger} = Log::Log4perl::get_logger();
+  if ($ENV{"FQDBDEBUG"}) { # enable debug logging if FQDBDEBUG is set
+    $this->{logger}->level($DEBUG)
+  } else {
+    $this->{logger}->level($INFO)
+  } ;
   if (my $dsn = $this->{dsn}) {
     INFO ("CREATED FQDB object based on $dsn\n");
   } else {
@@ -164,7 +180,7 @@ sub backpopulate {
     my $q = Finance::QuoteHist->new( symbols => \@fqsymbols,
                                      start_date => $start_date,
                                      end_date => $end_date );
-    my $line ;
+    my $line = "" ;
     my %symbols ;
     foreach my $row ($q->quotes()) {
       my ($fqsymbol, $date, $open, $high, $low, $close, $volume) = @$row;
@@ -348,6 +364,100 @@ sub dumpstocks {
   };
 }
 
+=head2 add_yahoo_stocks
+
+add_yahoo_stocks( $exchanges , [ $refsearchlist ] )
+
+retrieves yahoo tickers for specified exchanges and stores them in your database
+NOTE: $exchanges being the ID as coming from yahoo.
+      NYQ for Nyse, PAR for Paris
+$refsearchlist is an optional reference to a list of search patterns. defaults to [**AA .. **ZZ]
+
+=cut
+
+sub add_yahoo_stocks {
+  # http://uk.biz.yahoo.com/p/uk/cpi/index.html -> list of european stocks
+  my ($self,$exchanges,$refsearchlist) = @_ ;
+  my $popquantity = 30 ; # number of stocks to add in 1 call of addstock
+
+  if (!defined($exchanges)) {
+    ERROR ("No exchanges specified");
+  } else {
+    my %exchanges ;
+    foreach (split(',',$exchanges)) {
+      $exchanges{$_}=1 ;
+    }  ;
+
+    no strict 'subs' ;
+    if (!defined(@$refsearchlist)) {
+      $refsearchlist = [AA .. ZZ] ;
+      $$refsearchlist[$_] = "**".$$refsearchlist[$_] foreach (0 .. $#{@$refsearchlist}) ; # add ** in front of each list item
+    }
+    DEBUG ("$_") foreach (@$refsearchlist);
+
+    my $ua = LWP::UserAgent->new;
+    $ua->env_proxy;
+    INFO("Adding symbols from $exchanges.") ;
+
+    my %symbols ;
+
+    foreach my $letter (@$refsearchlist) {
+      my $yahoo_url = "http://finance.yahoo.com/lookup?s=$letter&t=S" ; # t=S means ONLY stocks
+
+      my $b = 0 ; # counter in url
+      my $cont ;
+      do {
+        $cont = 1; # continue increasing b
+        my $url = $yahoo_url."&b=".$b ;
+        DEBUG("URL: $url");
+        my $req = HTTP::Request->new(GET => $url);
+        my $reply = $ua->request($req);
+        if ($reply->is_success) {
+          if ($reply->content=~ m|Showing\s+(\d)+ - (\d+) of\s+(\d+)|) { # check if this is last page for this market
+            my ($from,$to,$total)=($1,$2,$3);
+            INFO ("For A: ".int($to*100/$total)." % completed");
+            $b=$to; # next page should start at this symbol. actually starts at symbol+1
+            $cont = ($to < $total);
+          }
+          # scrape the symbols from this page
+          my $te = HTML::TableExtract->new( headers=>[qw /Symbol Exchange/ ] );
+          $te->parse($reply->content);
+          foreach my $ts ($te->tables) {
+            foreach my $tr ($ts->rows) {
+              my $trsymb = @$tr[0] ;
+              $trsymb =~ s/ //g ;
+              my $exchsym = @$tr[1] ;
+              $exchsym =~ s/ //g ;
+              if (defined($exchanges{$exchsym})) {
+                INFO (" Symbol: $trsymb - Exchange $exchsym");
+                $symbols{$trsymb}+=1 ;                           # add the symbol as a key in the hash removes duplicates automatically
+              }
+            }
+          }
+        }
+        if ($cont) {
+          my $sleeptime = int(15+rand(5)) ;
+          INFO("Sleeping $sleeptime");
+          sleep $sleeptime;                                      # needed otherwise we might overload yahoo server
+        }
+      } while ($cont);
+    }
+
+    my @symbols = sort keys %symbols ;
+    while ($#symbols>0) {                                      # still elements in the array
+      my $sleeptime = int(10+rand(10)) ;
+      INFO("Sleeping $sleeptime");
+      sleep $sleeptime;                                        # needed otherwise we might overload yahoo server
+      my $stocks = join (",",splice(@symbols,0,$popquantity)); # take $popquantity number of elements out
+      # my $stocks = join (",",@symbols[0..$popquantity-1]);
+      # @symbols = @symbols[$popquantity+1..$#symbols-1];
+      INFO (" Adding stocks: $stocks");
+      $self->addstock('yahoo',$stocks);                        # add stocks in database
+    }
+  }
+  INFO("Finished adding stocks from yahoo");
+}
+
 =head2 schema
 
 schema()
@@ -433,7 +543,7 @@ L<http://search.cpan.org/dist/Finance-QuoteDB>
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2008 Erik Colson, all rights reserved.
+Copyright 2008-2011 Erik Colson, all rights reserved.
 
 This file is part of Finance::QuoteDB.
 
